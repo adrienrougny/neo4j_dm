@@ -1,16 +1,20 @@
 import dataclasses
+import os.path
 
 import frozendict
 
 import momapy.sbml.core
 import momapy.core
 import momapy_kb.neo4j.core
+import momapy.celldesigner.io.celldesigner
+import momapy.io
 
 import neo4j_dm.utils
 
 
 @dataclasses.dataclass(frozen=True)
 class CollectionEntry:
+    id_: str
     model: momapy.core.Model
     rdf_annotations: (
         frozendict.frozendict[
@@ -31,17 +35,17 @@ class Collection:
     )
 
 
-def save_collection_from_input_file_paths(
-    collection_name, input_file_paths, delete_all=False, check_connection=True
+def save_collection_from_file_paths(
+    collection_name, file_paths, delete_all=False, check_connection=True
 ):
     if check_connection:
         neo4j_dm.utils.check_connection()
     if delete_all:
         momapy_kb.neo4j.core.delete_all()
     collection_entries = []
-    for input_file_path in input_file_paths:
-        result = momapy.io.read(input_file_path, return_type="model")
-        model_id = input_file_path.split("/")[-1]
+    for file_path in file_paths:
+        result = momapy.io.read(file_path, return_type="model")
+        model_id, _ = os.path.splitext(os.path.basename(file_path))
         model = result.obj
         annotations = result.annotations
         ids = result.ids
@@ -53,8 +57,9 @@ def save_collection_from_input_file_paths(
             {key: frozenset(value) for key, value in ids.items()}
         )
         collection_entry = CollectionEntry(
+            id_=model_id,
             model=result.obj,
-            file_path=input_file_path,
+            file_path=file_path,
             rdf_annotations=annotations,
             ids=ids,
         )

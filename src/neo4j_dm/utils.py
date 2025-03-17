@@ -3,6 +3,7 @@ import pathlib
 import shutil
 import operator
 import functools
+import collections.abc
 
 import neo4j
 import momapy_kb.neo4j.core
@@ -23,21 +24,23 @@ def get_file_name_from_file_path(file_path):
     return os.path.basename(file_path)
 
 
-def flatten_list(input_list):
+def flatten_collection(input_collection):
     def _flatten_rec(a, b):
-        if isinstance(b, list):
-            b = flatten_list(b)
+        if isinstance(b, collections.abc.Sequence) and not isinstance(
+            b, (str, bytes, bytearray)
+        ):
+            b = flatten_collection(b)
         else:
             b = [b]
         return operator.iconcat(a, b)
 
-    return functools.reduce(_flatten_rec, input_list, [])
+    return functools.reduce(_flatten_rec, input_collection, [])
 
 
 def get_nodes_and_relationships_from_query_result(result):
     nodes = []
     relationships = []
-    for result_element in flatten_list(result):
+    for result_element in flatten_collection(result):
         if isinstance(result_element, neo4j.graph.Node):
             nodes.append(result_element)
         elif isinstance(result_element, neo4j.graph.Relationship):

@@ -5,7 +5,7 @@
 groups = ["default", "dev"]
 strategy = ["inherit_metadata"]
 lock_version = "4.5.0"
-content_hash = "sha256:76bd7c3cded0342790176c30c16249bea6a49966958a507834c19cb0518658ef"
+content_hash = "sha256:0386fcdb7647bc033d45a5295c2af95e407dd1329518fb69103eedc634e8eb44"
 
 [[metadata.targets]]
 requires_python = ">=3.11,<=3.12"
@@ -405,6 +405,16 @@ dependencies = [
 ]
 files = [
     {file = "pygobject-3.52.1.tar.gz", hash = "sha256:8d487ff9b9fbef423919e97f7f1c93fee1fcd8f78b8d920c68e46847bcaee381"},
+]
+
+[[package]]
+name = "pygraphviz"
+version = "1.14"
+requires_python = ">=3.10"
+summary = "Python interface to Graphviz"
+groups = ["default"]
+files = [
+    {file = "pygraphviz-1.14.tar.gz", hash = "sha256:c10df02377f4e39b00ae17c862f4ee7e5767317f1c6b2dfd04cea6acc7fc2bea"},
 ]
 
 [[package]]
