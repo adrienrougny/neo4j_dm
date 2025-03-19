@@ -5,7 +5,7 @@ description = "Default template for PDM package"
 authors = [
     {name = "Adrien Rougny", email = "adrienrougny@gmail.com"},
 ]
-dependencies = ["pygraphviz>=1.14"]
+dependencies = ["pygraphviz>=1.14", "pandas>=2.2.3", "rpy2>=3.5.17", "boltons>=25.0.0"]
 requires-python = ">=3.11, <=3.12"
 readme = "README.md"
 license = {text = "MIT"}

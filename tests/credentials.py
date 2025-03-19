@@ -1,5 +1,5 @@
-URI = "localhost"
-# URI = "10.240.6.183"
+# URI = "localhost"
+URI = "10.240.6.183"
 USERNAME = "neo4j"
 PASSWORD = "neofourj"
 DATABASE = "neo4j"
