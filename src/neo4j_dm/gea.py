@@ -13,10 +13,11 @@ import neo4j_dm.utils
 import neo4j_dm.queries
 
 
-def make_gene_sets_from_collection(collection_name, check_connection=True):
+def make_named_gene_sets_from_collection(
+    collection_name, check_connection=True
+):
     if check_connection:
         neo4j_dm.utils.check_connection()
-    gene_sets = []
     query = f"""
         MATCH
             (collection:Collection)-[:HAS_ENTRY]->(entry:CollectionEntry),
@@ -27,18 +28,19 @@ def make_gene_sets_from_collection(collection_name, check_connection=True):
         RETURN entry, collect(node)
     """
     result, _ = momapy_kb.neo4j.core.run(query)
+    named_gene_sets = []
     for row in result:
         entry_node = row[0]
         nodes = row[1]
         gene_set = make_gene_set_from_nodes(nodes)
-        gene_sets.append(
-            (
-                entry_node["id_"],
-                collection_name,
-                gene_set,
-            )
+        named_gene_sets.append(
+            {
+                "id": entry_node["id_"],
+                "description": collection_name,
+                "genes": gene_set,
+            }
         )
-    return gene_sets
+    return named_gene_sets
 
 
 def make_gene_set_from_nodes(nodes, namespace="ncbigene"):
@@ -52,23 +54,48 @@ def make_gene_set_from_nodes(nodes, namespace="ncbigene"):
     return gene_set
 
 
-def make_gmt_df_from_gene_sets(gene_sets: list[tuple[str, str, list[str]]]):
-    # gene_sets: list of (gene_set_id, gene_set_desritption, list_of_gene_ids)
-    gene_sets = [boltons.iterutils.flatten(gene_set) for gene_set in gene_sets]
-    gmt_df = pandas.DataFrame(gene_sets)
+def make_gmt_df_from_named_gene_sets(named_gene_sets: dict):
+    # named_gene_sets: list of {"gene_set_id": str, "description": str, "genes": list[str]}
+    rows = [
+        [
+            named_gene_set["id"],
+            named_gene_set["description"],
+        ]
+        + boltons.iterutils.flatten(named_gene_set["genes"])
+        for named_gene_set in named_gene_sets
+    ]
+    gmt_df = pandas.DataFrame(rows)
     return gmt_df
 
 
-def make_gmt_file_from_gene_sets(
-    gene_sets: list[tuple[str, str, list[str]]],
+def make_gmt_file_from_named_gene_sets(
+    named_gene_sets,
     output_file_path,
 ):
-    # gene_sets: list of (gene_set_id, gene_set_desritption, list_of_gene_ids)
-    gmt_df = make_gmt_df_from_gene_sets(gene_sets)
-    gmt_df.to_csv(output_file_path, sep="\t", header=False, index=False)
+    gmt_df = make_gmt_df_from_named_gene_sets(named_gene_sets)
+    make_gmt_file_from_gmt_df(gmt_df, output_file_path)
 
 
-def make_goat_analysis(gmt_df_or_file, source, gene_list_path_file):
+def make_gmt_file_from_gmt_df(gmt_df, output_file_path):
+    if len(gmt_df) > 0:
+        row = gmt_df.iloc[[0]]
+        row = row.dropna(axis="columns")
+        row.to_csv(
+            output_file_path, sep="\t", mode="w", index=False, header=False
+        )
+        for index in range(1, len(gmt_df)):
+            row = gmt_df.iloc[[index]]
+            row = row.dropna(axis="columns")
+            row.to_csv(
+                output_file_path, sep="\t", mode="a", index=False, header=False
+            )
+    else:
+        gmt_df.to_csv(
+            output_file_path, sep="\t", mode="w", index=False, header=False
+        )
+
+
+def make_goat_analysis(gmt_df_or_file_path, source, gene_list_path_file):
 
     def rpy2_df_to_pandas_df(rpy2_df):
         with (
@@ -101,18 +128,11 @@ def make_goat_analysis(gmt_df_or_file, source, gene_list_path_file):
     )
     goat = rpy2.robjects.packages.importr("goat")
     temp_file_path = None
-    if isinstance(gmt_df_or_file, pandas.DataFrame):
+    if isinstance(gmt_df_or_file_path, pandas.DataFrame):
         _, temp_file_path = tempfile.mkstemp()
-        mode = "w"
-        for index, row in gmt_df_or_file.iterrows():
-            row = row.dropna()
-            row = pandas.DataFrame(row).T
-            row.to_csv(
-                temp_file_path, sep="\t", mode=mode, index=False, header=False
-            )
-            mode = "a"
-        gmt_df_or_file = temp_file_path
-    r_gene_sets_df = goat.load_genesets_gmtfile(gmt_df_or_file, source)
+        make_gmt_file_from_gmt_df(gmt_df_or_file_path, temp_file_path)
+        gmt_df_or_file_path = temp_file_path
+    r_gene_sets_df = goat.load_genesets_gmtfile(gmt_df_or_file_path, source)
     if temp_file_path is not None:
         os.remove(temp_file_path)
     r_gene_list_df = utils.read_csv(gene_list_path_file)
