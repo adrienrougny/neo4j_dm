@@ -87,11 +87,15 @@ def get_subgraph(
     min_level=0,
     max_level=-1,
     filter_output_relationships=False,
+    blacklist_nodes=None,
 ):
     if relationship_types is None:
         relationship_types = []
     if exclude_labels is None:
         exclude_labels = []
+    if blacklist_nodes is None:
+        blacklist_nodes = []
+    blacklist_node_ids = [node.element_id for node in blacklist_nodes]
     node_element_id = node.element_id
     if mode == "downstream":
         relationship_types_for_filter = [
@@ -104,13 +108,17 @@ def get_subgraph(
     relationship_filter = "|".join(relationship_types_for_filter)
     label_filter = "|".join([f"-{label}" for label in exclude_labels])
     query = f"""
+        MATCH (blacklist_node)
+        WHERE elementId(blacklist_node) IN {blacklist_node_ids}
+        WITH collect(blacklist_node) AS blacklist_nodes
         MATCH (node)
         WHERE elementId(node) = "{node_element_id}"
         CALL apoc.path.subgraphAll(node, {{
             relationshipFilter: "{relationship_filter}",
             labelFilter: "{label_filter}",
             minLevel: {min_level},
-            maxLevel: {max_level}
+            maxLevel: {max_level},
+            blacklistNodes: blacklist_nodes
         }})
         YIELD nodes, relationships
         RETURN nodes, relationships
