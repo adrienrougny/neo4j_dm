@@ -65,16 +65,8 @@ def save_collection_from_file_paths(
     for file_path in file_paths:
         result = momapy.io.read(file_path, return_type="model")
         model_id, _ = os.path.splitext(os.path.basename(file_path))
-        model = result.obj
         annotations = result.annotations
         ids = result.ids
-        annotations = frozendict.frozendict(
-            {key: frozenset(value) for key, value in annotations.items()}
-        )
-        ids[model] = [model_id]
-        ids = frozendict.frozendict(
-            {key: frozenset(value) for key, value in ids.items()}
-        )
         collection_entry = CollectionEntry(
             id_=model_id,
             model=result.obj,
