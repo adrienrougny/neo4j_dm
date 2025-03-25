@@ -35,6 +35,25 @@ class Collection:
     )
 
 
+def save_collection_from_collection_entries(
+    collection_name,
+    collection_entries,
+    delete_all=False,
+    check_connection=True,
+):
+    if check_connection:
+        neo4j_dm.utils.check_connection()
+    if delete_all:
+        momapy_kb.neo4j.core.delete_all()
+    collection = Collection(
+        name=collection_name, entries=frozenset(collection_entries)
+    )
+    momapy_kb.neo4j.core.save_node_from_object(
+        collection,
+        object_to_node_mode="hash",
+    )
+
+
 def save_collection_from_file_paths(
     collection_name, file_paths, delete_all=False, check_connection=True
 ):
@@ -64,10 +83,9 @@ def save_collection_from_file_paths(
             ids=ids,
         )
         collection_entries.append(collection_entry)
-    collection = Collection(
-        name=collection_name, entries=frozenset(collection_entries)
-    )
-    momapy_kb.neo4j.core.save_node_from_object(
-        collection,
-        object_to_node_mode="hash",
+    save_collection_from_collection_entries(
+        collection_name,
+        collection_entries,
+        delete_all=delete_all,
+        check_connection=check_connection,
     )
