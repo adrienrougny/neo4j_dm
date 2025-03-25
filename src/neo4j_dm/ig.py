@@ -286,8 +286,11 @@ def make_ig_from_nodes_and_relationships(
     if include is None:
         include = nodes
     for node in include[:max_n_nodes]:
+        node._graph = None
         ig.add_node(node)
     for relationship in relationships:
+        relationship.start_node._graph = None
+        relationship.end_node._graph = None
         end_node = relationship.end_node
         if end_node in ig.get_nodes():
             ig.add_relationship(relationship)
