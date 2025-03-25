@@ -1,6 +1,7 @@
 import copy
 
 import pygraphviz
+import momapy.geometry
 import momapy.coloring
 import momapy.celldesigner.core
 import momapy.rendering.svg_native
@@ -376,6 +377,7 @@ def render_ig(
         a_node.attr["width"] = layout_element.width / POINTS_PER_INCH
         a_node.attr["height"] = layout_element.height / POINTS_PER_INCH
     a_graph.graph_attr["ranksep"] = 1.0
+    a_graph.graph_attr["rankdir"] = "BT"
     a_graph.layout(prog="dot")
     for a_node in a_graph.nodes():
         x, y = [float(coord) for coord in a_node.attr["pos"].split(",")]
