@@ -69,11 +69,11 @@ def save_collection_from_file_paths(
         model = result.obj
         annotations = result.annotations
         annotations = frozendict.frozendict(
-            {key: tuple(val) for key, val in annotations.items()}
+            {key: frozenset(val) for key, val in annotations.items()}
         )
         ids = result.ids
         ids = frozendict.frozendict(
-            {key: tuple(val) for key, val in ids.items()}
+            {key: frozenset(val) for key, val in ids.items()}
         )
         collection_entry = CollectionEntry(
             id_=model_id,
