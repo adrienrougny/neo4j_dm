@@ -7,6 +7,7 @@ import momapy.sbml.core
 import momapy.core
 import momapy_kb.neo4j.core
 import momapy.celldesigner.io.celldesigner
+import momapy.celldesigner.io.pickle
 import momapy.io
 
 import neo4j_dm.utils
@@ -65,11 +66,18 @@ def save_collection_from_file_paths(
     for file_path in file_paths:
         result = momapy.io.read(file_path, return_type="model")
         model_id, _ = os.path.splitext(os.path.basename(file_path))
+        model = result.obj
         annotations = result.annotations
+        annotations = frozendict.frozendict(
+            {key: tuple(val) for key, val in annotations.items()}
+        )
         ids = result.ids
+        ids = frozendict.frozendict(
+            {key: tuple(val) for key, val in ids.items()}
+        )
         collection_entry = CollectionEntry(
             id_=model_id,
-            model=result.obj,
+            model=model,
             file_path=file_path,
             rdf_annotations=annotations,
             ids=ids,
