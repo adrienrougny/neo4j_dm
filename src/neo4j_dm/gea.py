@@ -55,14 +55,10 @@ def make_gene_set_from_nodes(nodes, namespace="ncbigene"):
 
 
 def make_gmt_df_from_named_gene_sets(named_gene_sets: dict):
-    # named_gene_sets: list of {"gene_set_id": str, "description": str, "genes": list[str]}
+    # named_gene_sets: dict[str, set[str]]
     rows = [
-        [
-            named_gene_set["id"],
-            named_gene_set["description"],
-        ]
-        + boltons.iterutils.flatten(named_gene_set["genes"])
-        for named_gene_set in named_gene_sets
+        [id_, id_] + boltons.iterutils.flatten(named_gene_sets[id_])
+        for id_ in named_gene_sets
     ]
     gmt_df = pandas.DataFrame(rows)
     return gmt_df
