@@ -141,16 +141,21 @@ def make_goat_analysis(gmt_df_or_file_path, source, gene_list_path_file):
     r_gene_sets_filtered_df = goat.filter_genesets(
         r_gene_sets_df, r_gene_list_df, min_overlap=10, max_overlap=1500
     )
-    r_result_df = goat.test_genesets(
-        r_gene_sets_filtered_df,
-        r_gene_list_df,
-        method="goat",
-        score_type="effectsize",
-        padj_method="fdr",
-        padj_cutoff=0.05,
-    )
-    _, temp_file_path = tempfile.mkstemp(suffix=".csv")
-    goat.save_genesets(r_result_df, r_gene_list_df, filename=temp_file_path)
-    goat_df = pandas.read_csv(temp_file_path)
-    os.remove(temp_file_path)
+    if r_gene_sets_filtered_df.nrow > 0:
+        r_result_df = goat.test_genesets(
+            r_gene_sets_filtered_df,
+            r_gene_list_df,
+            method="goat",
+            score_type="effectsize",
+            padj_method="fdr",
+            padj_cutoff=0.05,
+        )
+        _, temp_file_path = tempfile.mkstemp(suffix=".csv")
+        goat.save_genesets(
+            r_result_df, r_gene_list_df, filename=temp_file_path
+        )
+        goat_df = pandas.read_csv(temp_file_path)
+        os.remove(temp_file_path)
+    else:
+        goat_df = pandas.DataFrame()
     return goat_df
