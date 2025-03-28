@@ -404,11 +404,11 @@ def render_ig(
             start_node["id_"]
         ]
         end_layout_element = node_id_to_layout_element_moved[end_node["id_"]]
+        start_point = start_layout_element.border(end_layout_element.center())
+        end_point = end_layout_element.border(start_layout_element.center())
         arc = map_builder.new_layout_element(
             relationship_type_to_cd_class[relationship.type]
         )
-        start_point = start_layout_element.border(end_layout_element.center())
-        end_point = end_layout_element.border(start_layout_element.center())
         arc.segments = momapy.core.TupleBuilder(
             [momapy.geometry.Segment(start_point, end_point)]
         )
@@ -418,7 +418,9 @@ def render_ig(
         layout_element_builder.line_width = 3.0
         layout_element_builder.stroke = momapy.coloring.yellow
         layout_element_builder.fill = momapy.coloring.red
-    momapy.positioning.set_fit(layout_builder, layout_builder.layout_elements)
+    momapy.positioning.set_fit(
+        layout_builder, layout_builder.layout_elements, xsep=50, ysep=50
+    )
     momapy.rendering.core.render_map(
-        map_builder, output_file_path, renderer="svg-native"
+        map_builder, output_file_path, renderer="svg-native", to_top_left=True
     )
