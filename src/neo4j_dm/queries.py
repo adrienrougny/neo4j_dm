@@ -28,10 +28,7 @@ def get_annotations(nodes):
             (node:ModelElement)
         WHERE
             elementId(node) IN {node_element_ids}
-        OPTIONAL MATCH
-            (node)<-[:HAS_KEY]-(node_item:Item),
-            (node_item)-[:HAS_VALUE]->(node_bag:Bag)-[:HAS_ELEMENT]->(node_annotation:RDFAnnotation)
-        RETURN node, collect(node_annotation)
+        RETURN node, [(node)<-[:HAS_KEY]-(node_item:Item)-[:HAS_VALUE]->(node_bag:Bag)-[:HAS_ELEMENT]->(node_annotation:RDFAnnotation) | node_annotation]
     """
     result, _ = momapy_kb.neo4j.core.run(query)
     return result
