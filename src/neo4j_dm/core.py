@@ -35,8 +35,8 @@ def delete_all():
     momapy_kb.neo4j.core.delete_all()
 
 
-def run(query):
-    return momapy_kb.neo4j.core.run(query)
+def run(query, params=None):
+    return momapy_kb.neo4j.core.run(query, params=params)
 
 
 @dataclasses.dataclass(frozen=True)
