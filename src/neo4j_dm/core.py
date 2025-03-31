@@ -13,6 +13,32 @@ import momapy.io
 import neo4j_dm.utils
 
 
+def connect(hostname, username, password, protocol="bolt", port="7687"):
+    momapy_kb.neo4j.core.connect(
+        hostname=hostname,
+        username=username,
+        password=password,
+        protocol=protocol,
+        port=port,
+    )
+
+
+def close_connection():
+    momapy_kb.neo4j.core.close_connection()
+
+
+def is_connected():
+    momapy_kb.neo4j.core.is_connected()
+
+
+def delete_all():
+    momapy_kb.neo4j.core.delete_all()
+
+
+def run(query):
+    return momapy_kb.neo4j.core.run(query)
+
+
 @dataclasses.dataclass(frozen=True)
 class CollectionEntry:
     id_: str
