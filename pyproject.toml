@@ -5,8 +5,8 @@ description = "Default template for PDM package"
 authors = [
     {name = "Adrien Rougny", email = "adrienrougny@gmail.com"},
 ]
-dependencies = ["pygraphviz>=1.14", "pandas>=2.2.3", "rpy2>=3.5.17", "boltons>=25.0.0"]
-requires-python = ">=3.11, <=3.12"
+dependencies = ["pygraphviz>=1.14", "pandas>=2.2.3", "rpy2>=3.5.17", "boltons>=25.0.0", "momapy @ git+http://github.com/adrienrougny/momapy.git@develop", "momapy-kb @ git+http://github.com/adrienrougny/momapy_kb.git"]
+requires-python = ">=3.10"
 readme = "README.md"
 license = {text = "MIT"}
 
@@ -18,8 +18,3 @@ build-backend = "pdm.backend"
 [tool.pdm]
 distribution = true
 
-[tool.pdm.dev-dependencies]
-dev = [
-    "-e file:///${PROJECT_ROOT}/../momapy#egg=momapy",
-    "-e file:///${PROJECT_ROOT}/../momapy_kb#egg=momapy-kb",
-]
