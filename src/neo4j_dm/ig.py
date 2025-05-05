@@ -2,7 +2,9 @@ import copy
 
 import pygraphviz
 import momapy.geometry
+import momapy.core
 import momapy.coloring
+import momapy.positioning
 import momapy.celldesigner.core
 import momapy.rendering.svg_native
 import momapy.rendering.core
@@ -324,8 +326,13 @@ def get_number_and_size_of_components(ig):
     return neo4j_dm.utils.get_number_and_size_of_clusters(list_of_sets)
 
 
-def render_ig(
-    ig, entry_id_to_map, entry_id_to_ids, output_file_path, color_node_ids=None
+def make_map_layout_from_ig(
+    ig,
+    entry_id_to_map,
+    entry_id_to_ids,
+    output_file_path,
+    color_node_ids: list[tuple[list[str], str]] | None = None,
+    label=None,
 ):
 
     def translate_layout_element(layout_element, tx, ty):
@@ -337,10 +344,10 @@ def render_ig(
         color_node_ids = []
 
     relationship_type_to_cd_class = {
-        "_POSITIVE_INFLUENCE": momapy.celldesigner.core.PositiveInfluenceLayout,
-        "_NECESSARY_POSITIVE_INFLUENCE": momapy.celldesigner.core.TriggeringLayout,
-        "_REACTANT_TO_PRODUCT": momapy.celldesigner.core.TriggeringLayout,
-        "_NEGATIVE_INFLUENCE": momapy.celldesigner.core.InhibitionLayout,
+        POSITIVE_INFLUENCE: momapy.celldesigner.core.PositiveInfluenceLayout,
+        NECESSARY_POSITIVE_INFLUENCE: momapy.celldesigner.core.TriggeringLayout,
+        REACTANT_TO_PRODUCT: momapy.celldesigner.core.TriggeringLayout,
+        NEGATIVE_INFLUENCE: momapy.celldesigner.core.InhibitionLayout,
     }
     node_to_layout_element = {}
     for node in ig.get_nodes():
@@ -365,7 +372,6 @@ def render_ig(
         node_to_layout_element[node] = layout_element
     map_builder = momapy.celldesigner.core.CellDesignerMapBuilder()
     layout_builder = map_builder.new_layout()
-    map_builder.layout = layout_builder
     a_graph = pygraphviz.AGraph()
     node_id_to_coordinates = {}
     for node in ig.get_nodes():
@@ -406,21 +412,42 @@ def render_ig(
         end_layout_element = node_id_to_layout_element_moved[end_node["id_"]]
         start_point = start_layout_element.border(end_layout_element.center())
         end_point = end_layout_element.border(start_layout_element.center())
-        arc = map_builder.new_layout_element(
+        arc = layout_builder.new_element(
             relationship_type_to_cd_class[relationship.type]
         )
         arc.segments = momapy.core.TupleBuilder(
             [momapy.geometry.Segment(start_point, end_point)]
         )
-        map_builder.layout.layout_elements.append(arc)
-    for node_id in color_node_ids:
-        layout_element_builder = node_id_to_layout_element_moved[node_id]
-        layout_element_builder.line_width = 3.0
-        layout_element_builder.stroke = momapy.coloring.yellow
-        layout_element_builder.fill = momapy.coloring.red
-    momapy.positioning.set_fit(
-        layout_builder, layout_builder.layout_elements, xsep=50, ysep=50
+        layout_builder.layout_elements.append(arc)
+    for node_ids, color_name in color_node_ids:
+        color = getattr(momapy.coloring, color_name)
+        for node_id in node_ids:
+            layout_element_builder = node_id_to_layout_element_moved[node_id]
+            layout_element_builder.line_width = 3.0
+            layout_element_builder.stroke = color
+    bbox = momapy.positioning.fit(layout_builder.layout_elements)
+    if label is not None:
+        text_layout = momapy.core.TextLayout(
+            text=label, position=momapy.positioning.below_of(bbox.south(), 50)
+        )
+        layout_builder.layout_elements.append(text_layout)
+        bbox = momapy.positioning.fit(layout_builder, xsep=50, ysep=50)
+    layout_builder.position = bbox.position
+    layout_builder.width = bbox.width
+    layout_builder.height = bbox.height
+    layout = momapy.builder.object_from_builder(layout_builder)
+    return layout
+
+
+def render_ig(
+    ig, entry_id_to_map, entry_id_to_ids, output_file_path, color_node_ids=None
+):
+    layout = make_map_layout_from_ig(
+        ig=ig,
+        entry_id_to_map=entry_id_to_map,
+        entry_id_to_ids=entry_id_to_ids,
+        color_node_ids=color_node_ids,
     )
-    momapy.rendering.core.render_map(
-        map_builder, output_file_path, renderer="svg-native", to_top_left=True
+    momapy.rendering.core.render_layout_element(
+        layout, output_file_path, to_top_left=True
     )
