@@ -282,25 +282,19 @@ def make_ig_in_db(check_connection=True):
         _ = momapy_kb.neo4j.core.run(query)
 
 
-def make_ig_from_nodes_and_relationships(
-    nodes, relationships, include=None, max_n_nodes=-1
-):
+def make_ig_from_nodes_and_relationships(nodes, relationships):
     ig = InfluenceGraph()
-    if include is None:
-        include = nodes
-    for node in include[:max_n_nodes]:
+    for node in nodes:
         node._graph = None
         ig.add_node(node)
     for relationship in relationships:
         relationship.start_node._graph = None
         relationship.end_node._graph = None
-        end_node = relationship.end_node
-        if end_node in ig.get_nodes():
+        if (
+            relationship.start_node in ig.get_nodes()
+            and relationship.end_node in ig.get_nodes()
+        ):
             ig.add_relationship(relationship)
-    for node in ig.get_nodes():
-        for modulator in ig.get_modulators(node):
-            if modulator not in ig.get_nodes():
-                ig.add_node(modulator)
     return ig
 
 
@@ -330,7 +324,6 @@ def make_map_layout_from_ig(
     ig,
     entry_id_to_map,
     entry_id_to_ids,
-    output_file_path,
     color_node_ids: list[tuple[list[str], str]] | None = None,
     label=None,
 ):
@@ -422,16 +415,20 @@ def make_map_layout_from_ig(
     for node_ids, color_name in color_node_ids:
         color = getattr(momapy.coloring, color_name)
         for node_id in node_ids:
-            layout_element_builder = node_id_to_layout_element_moved[node_id]
-            layout_element_builder.line_width = 3.0
-            layout_element_builder.stroke = color
+            layout_element_builder = node_id_to_layout_element_moved.get(
+                node_id
+            )
+            if layout_element_builder is not None:
+                layout_element_builder.fill = color
     bbox = momapy.positioning.fit(layout_builder.layout_elements)
     if label is not None:
         text_layout = momapy.core.TextLayout(
             text=label, position=momapy.positioning.below_of(bbox.south(), 50)
         )
         layout_builder.layout_elements.append(text_layout)
-        bbox = momapy.positioning.fit(layout_builder, xsep=50, ysep=50)
+        bbox = momapy.positioning.fit(
+            layout_builder.layout_elements, xsep=50, ysep=50
+        )
     layout_builder.position = bbox.position
     layout_builder.width = bbox.width
     layout_builder.height = bbox.height

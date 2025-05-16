@@ -28,10 +28,33 @@ def get_annotations(nodes):
             (node:ModelElement)
         WHERE
             elementId(node) IN {node_element_ids}
-        RETURN node, [(node)<-[:HAS_KEY]-(node_item:Item)-[:HAS_VALUE]->(node_bag:Bag)-[:HAS_ELEMENT]->(node_annotation:RDFAnnotation) | node_annotation]
+        OPTIONAL MATCH
+            (node)<-[:HAS_KEY]-(node_item:Item)-[:HAS_VALUE]->(node_bag:Bag)-[:HAS_ELEMENT]->(node_annotation:RDFAnnotation)
+        RETURN node, collect(DISTINCT node_annotation)
     """
     result, _ = momapy_kb.neo4j.core.run(query)
-    return result
+    formatted_result = []
+    for row in result:
+        formatted_result.append(
+            (
+                row[0],
+                row[1],
+            )
+        )
+    return formatted_result
+
+
+def get_identifiers(nodes, namespace="ncbigene"):
+    formatted_result = []
+    for node, annotations in neo4j_dm.queries.get_annotations(nodes):
+        identifiers = []
+        for annotation in annotations:
+            for resource in annotation["resources"]:
+                if namespace in resource:
+                    identifier = resource.split(":")[-1]
+                    identifiers.append(identifier)
+        formatted_result.append((node, identifiers))
+    return formatted_result
 
 
 def get_ids_and_context(nodes):
@@ -47,12 +70,41 @@ def get_ids_and_context(nodes):
         RETURN node, collect([node_id.value, entry, collection])
     """
     result, _ = momapy_kb.neo4j.core.run(query)
-    final_result = []
+    formatted_result = []
     for row in result:
         node = row[0]
         ids_and_context = [tuple(element) for element in row[1]]
-        final_result.append(tuple([node, ids_and_context]))
-    return final_result
+        formatted_result.append(tuple([node, ids_and_context]))
+    return formatted_result
+
+
+def get_subunits(nodes, recursive=True):
+    node_element_ids = [node.element_id for node in nodes]
+    if recursive:
+        cardinality = "*"
+    else:
+        cardinality = ""
+    query = f"""
+        MATCH
+            (node:ModelElement)
+        WHERE
+            elementId(node) IN {node_element_ids}
+        OPTIONAL MATCH
+        (node)-[:HAS_SUBUNIT{cardinality}]->(subunit)
+        RETURN node, collect(subunit)
+    """
+    result, _ = momapy_kb.neo4j.core.run(query)
+    formatted_result = []
+    for row in result:
+        node = row[0]
+        subunits = row[1]
+        formatted_result.append(
+            (
+                node,
+                subunits,
+            )
+        )
+    return formatted_result
 
 
 def get_annotations_and_context(nodes):
@@ -68,12 +120,12 @@ def get_annotations_and_context(nodes):
         RETURN node, collect([node_annotation, entry, collection])
     """
     result, _ = momapy_kb.neo4j.core.run(query)
-    final_result = []
+    formatted_result = []
     for row in result:
         node = row[0]
         ids_and_context = [tuple(element) for element in row[1]]
-        final_result.append(tuple([node, ids_and_context]))
-    return final_result
+        formatted_result.append(tuple([node, ids_and_context]))
+    return formatted_result
 
 
 def get_subgraph(

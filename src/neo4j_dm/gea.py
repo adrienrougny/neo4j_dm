@@ -28,29 +28,25 @@ def make_named_gene_sets_from_collection(
         RETURN entry, collect(node)
     """
     result, _ = momapy_kb.neo4j.core.run(query)
-    named_gene_sets = []
+    named_gene_sets = {}
     for row in result:
         entry_node = row[0]
         nodes = row[1]
         gene_set = make_gene_set_from_nodes(nodes)
-        named_gene_sets.append(
-            {
-                "id": entry_node["id_"],
-                "description": collection_name,
-                "genes": gene_set,
-            }
-        )
+        named_gene_sets[entry_node["id_"]] = gene_set
     return named_gene_sets
 
 
-def make_gene_set_from_nodes(nodes, namespace="ncbigene"):
+def make_gene_set_from_nodes(nodes, namespace="ncbigene", with_subunits=False):
+    if with_subunits:
+        nodes_and_subunits = neo4j_dm.queries.get_subunits(nodes)
+        for _, subunits in nodes_and_subunits:
+            nodes += subunits
     gene_set = set()
-    for node, annotations in neo4j_dm.queries.get_annotations(nodes):
-        for annotation in annotations:
-            for resource in annotation["resources"]:
-                if namespace in resource:
-                    identifier = resource.split(":")[-1]
-                    gene_set.add(identifier)
+    identifiers = neo4j_dm.queries.get_identifiers(nodes, namespace)
+    for _, identifiers in neo4j_dm.queries.get_annotations(nodes):
+        for identifier in identifiers:
+            gene_set.add(identifier)
     return gene_set
 
 
@@ -91,7 +87,9 @@ def make_gmt_file_from_gmt_df(gmt_df, output_file_path):
         )
 
 
-def make_goat_analysis(gmt_df_or_file_path, source, gene_list_path_file):
+def make_goat_analysis(
+    gmt_df_or_file_path, source, gene_list_path_file, p_value_cutoff=0.05
+):
 
     def rpy2_df_to_pandas_df(rpy2_df):
         with (
@@ -148,7 +146,7 @@ def make_goat_analysis(gmt_df_or_file_path, source, gene_list_path_file):
             method="goat",
             score_type="effectsize",
             padj_method="fdr",
-            padj_cutoff=0.05,
+            padj_cutoff=p_value_cutoff,
         )
         _, temp_file_path = tempfile.mkstemp(suffix=".csv")
         goat.save_genesets(

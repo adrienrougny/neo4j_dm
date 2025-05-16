@@ -62,9 +62,8 @@ class Collection:
     )
 
 
-def save_collection_from_collection_entries(
-    collection_name,
-    collection_entries,
+def save_collections_from_entries(
+    collection_names_and_entries,
     delete_all=False,
     check_connection=True,
 ):
@@ -72,46 +71,61 @@ def save_collection_from_collection_entries(
         neo4j_dm.utils.check_connection()
     if delete_all:
         momapy_kb.neo4j.core.delete_all()
-    collection = Collection(
-        name=collection_name, entries=frozenset(collection_entries)
-    )
-    momapy_kb.neo4j.core.save_node_from_object(
-        collection,
+    collections = []
+    for collection_name, collection_entries in collection_names_and_entries:
+        collection = Collection(
+            name=collection_name, entries=frozenset(collection_entries)
+        )
+        collections.append(collection)
+    momapy_kb.neo4j.core.save_nodes_from_objects(
+        collections,
         object_to_node_mode="hash",
     )
 
 
-def save_collection_from_file_paths(
-    collection_name, file_paths, delete_all=False, check_connection=True
+def save_collections_from_file_paths(
+    collection_names_and_file_paths, delete_all=False, check_connection=True
 ):
     if check_connection:
         neo4j_dm.utils.check_connection()
     if delete_all:
         momapy_kb.neo4j.core.delete_all()
-    collection_entries = []
-    for file_path in file_paths:
-        result = momapy.io.read(file_path, return_type="model")
-        model_id, _ = os.path.splitext(os.path.basename(file_path))
-        model = result.obj
-        annotations = result.annotations
-        annotations = frozendict.frozendict(
-            {key: frozenset(val) for key, val in annotations.items()}
-        )
-        ids = result.ids
-        ids = frozendict.frozendict(
-            {key: frozenset(val) for key, val in ids.items()}
-        )
-        collection_entry = CollectionEntry(
-            id_=model_id,
-            model=model,
-            file_path=file_path,
-            rdf_annotations=annotations,
-            ids=ids,
-        )
-        collection_entries.append(collection_entry)
-    save_collection_from_collection_entries(
+    collection_names_and_entries = []
+    for (
         collection_name,
-        collection_entries,
+        collection_file_paths,
+    ) in collection_names_and_file_paths:
+        collection_entries = []
+        for collection_file_path in collection_file_paths:
+            result = momapy.io.read(collection_file_path, return_type="model")
+            model_id, _ = os.path.splitext(
+                os.path.basename(collection_file_path)
+            )
+            model = result.obj
+            annotations = result.annotations
+            annotations = frozendict.frozendict(
+                {key: frozenset(val) for key, val in annotations.items()}
+            )
+            ids = result.ids
+            ids = frozendict.frozendict(
+                {key: frozenset(val) for key, val in ids.items()}
+            )
+            collection_entry = CollectionEntry(
+                id_=model_id,
+                model=model,
+                file_path=collection_file_path,
+                rdf_annotations=annotations,
+                ids=ids,
+            )
+            collection_entries.append(collection_entry)
+        collection_names_and_entries.append(
+            (
+                collection_name,
+                collection_entries,
+            )
+        )
+    save_collections_from_entries(
+        collection_names_and_entries,
         delete_all=delete_all,
         check_connection=check_connection,
     )
