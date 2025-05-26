@@ -14,7 +14,10 @@ import neo4j_dm.queries
 
 
 def make_named_gene_sets_from_collection(
-    collection_name, check_connection=True
+    collection_name,
+    namespace="ncbigene",
+    with_subunits=False,
+    check_connection=True,
 ):
     if check_connection:
         neo4j_dm.utils.check_connection()
@@ -32,7 +35,9 @@ def make_named_gene_sets_from_collection(
     for row in result:
         entry_node = row[0]
         nodes = row[1]
-        gene_set = make_gene_set_from_nodes(nodes)
+        gene_set = make_gene_set_from_nodes(
+            nodes, namespace=namespace, with_subunits=with_subunits
+        )
         named_gene_sets[entry_node["id_"]] = gene_set
     return named_gene_sets
 
@@ -44,7 +49,7 @@ def make_gene_set_from_nodes(nodes, namespace="ncbigene", with_subunits=False):
             nodes += subunits
     gene_set = set()
     identifiers = neo4j_dm.queries.get_identifiers(nodes, namespace)
-    for _, identifiers in neo4j_dm.queries.get_annotations(nodes):
+    for _, identifiers in identifiers:
         for identifier in identifiers:
             gene_set.add(identifier)
     return gene_set
@@ -88,7 +93,11 @@ def make_gmt_file_from_gmt_df(gmt_df, output_file_path):
 
 
 def make_goat_analysis(
-    gmt_df_or_file_path, source, gene_list_path_file, p_value_cutoff=0.05
+    gmt_df_or_file_path,
+    source,
+    gene_list_file_path,
+    score_type="effectsize",
+    p_value_cutoff=0.05,
 ):
 
     def rpy2_df_to_pandas_df(rpy2_df):
@@ -129,12 +138,16 @@ def make_goat_analysis(
     r_gene_sets_df = goat.load_genesets_gmtfile(gmt_df_or_file_path, source)
     if temp_file_path is not None:
         os.remove(temp_file_path)
-    r_gene_list_df = utils.read_csv(gene_list_path_file)
+    r_gene_list_df = utils.read_csv(gene_list_file_path)
     pandas_gene_list_df = rpy2_df_to_pandas_df(r_gene_list_df)
     pandas_gene_list_df["signif"] = pandas_gene_list_df["signif"].map(
         {"True": True, "False": False}
     )
-    pandas_gene_list_df = pandas_gene_list_df.head(20000)
+    if score_type == "effectsize_and_pvalue":
+        pandas_gene_list_df["effectsize"] = pandas_gene_list_df[
+            "effectsize"
+        ] * (-pandas_gene_list_df["pvalue"] + 1)
+        score_type = "effectsize"
     r_gene_list_df = pandas_df_to_rpy2_df(pandas_gene_list_df)
     r_gene_sets_filtered_df = goat.filter_genesets(
         r_gene_sets_df, r_gene_list_df, min_overlap=10, max_overlap=1500
@@ -144,8 +157,8 @@ def make_goat_analysis(
             r_gene_sets_filtered_df,
             r_gene_list_df,
             method="goat",
-            score_type="effectsize",
-            padj_method="fdr",
+            score_type=score_type,
+            padj_method="BH",
             padj_cutoff=p_value_cutoff,
         )
         _, temp_file_path = tempfile.mkstemp(suffix=".csv")
