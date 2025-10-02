@@ -1,6 +1,6 @@
 import copy
 
-import pygraphviz
+import pydot
 import momapy.geometry
 import momapy.core
 import momapy.coloring
@@ -18,9 +18,7 @@ POSITIVE_INFLUENCE = "_POSITIVE_INFLUENCE"
 NEGATIVE_INFLUENCE = "_NEGATIVE_INFLUENCE"
 NECESSARY_POSITIVE_INFLUENCE = "_NECESSARY_POSITIVE_INFLUENCE"
 UNCERTAIN_POSITIVE_INFLUENCE = "_UNCERTAIN_POSITIVE_INFLUENCE"
-UNCERTAIN_NECESSARY_POSITIVE_INFLUENCE = (
-    "_UNCERTAIN_NECESSARY_POSITIVE_INFLUENCE"
-)
+UNCERTAIN_NECESSARY_POSITIVE_INFLUENCE = "_UNCERTAIN_NECESSARY_POSITIVE_INFLUENCE"
 UNCERTAIN_NEGATIVE_INFLUENCE = "_UNCERTAIN_NEGATIVE_INFLUENCE"
 
 INFLUENCES = [
@@ -33,7 +31,6 @@ POINTS_PER_INCH = 96
 
 
 class InfluenceGraph(dict):
-
     def get_nodes(self):
         return set(self.keys())
 
@@ -327,7 +324,6 @@ def make_map_layout_from_ig(
     color_node_ids: list[tuple[list[str], str]] | None = None,
     label=None,
 ):
-
     def translate_layout_element(layout_element, tx, ty):
         layout_element.position = layout_element.position + (tx, ty)
         for sub_layout_element in layout_element.children():
@@ -365,30 +361,29 @@ def make_map_layout_from_ig(
         node_to_layout_element[node] = layout_element
     map_builder = momapy.celldesigner.core.CellDesignerMapBuilder()
     layout_builder = map_builder.new_layout()
-    a_graph = pygraphviz.AGraph()
+    dot_graph = pydot.Digraph()
     node_id_to_coordinates = {}
     for node in ig.get_nodes():
-        a_graph.add_node(node["id_"])
+        dot_graph.add_node(pydot.Node(node["id_"]))
         for modulator in ig.get_modulators(node):
-            a_graph.add_edge(modulator["id_"], node["id_"])
+            dot_graph.add_edge(pydot.Edge(modulator["id_"], node["id_"]))
     for node, layout_element in node_to_layout_element.items():
-        a_node = a_graph.get_node(node["id_"])
-        a_node.attr["width"] = layout_element.width / POINTS_PER_INCH
-        a_node.attr["height"] = layout_element.height / POINTS_PER_INCH
-    a_graph.graph_attr["ranksep"] = 1.0
-    a_graph.graph_attr["rankdir"] = "BT"
-    a_graph.layout(prog="dot")
-    for a_node in a_graph.nodes():
-        x, y = [float(coord) for coord in a_node.attr["pos"].split(",")]
-        node_id_to_coordinates[str(a_node)] = (
+        dot_node = dot_graph.get_node(node["id_"])
+        dot_node.set("width", layout_element.width / POINTS_PER_INCH)
+        dot_node.set("height", layout_element.height / POINTS_PER_INCH)
+    dot_graph.set("ranksep", 1.0)
+    dot_graph.set("rankdir", "BT")
+    dot = dot_graph.create_dot(prog="dot").decode("utf-8")
+    dot_graph = pydot.graph_from_dot_data(dot)[0]
+    for dot_node in dot_graph.get_nodes():
+        x, y = [float(coord) for coord in dot_node.get("pos").split(",")]
+        node_id_to_coordinates[str(dot_node)] = (
             x,
             y,
         )
     node_id_to_layout_element_moved = {}
     for node, layout_element in node_to_layout_element.items():
-        layout_element_builder = momapy.builder.builder_from_object(
-            layout_element
-        )
+        layout_element_builder = momapy.builder.builder_from_object(layout_element)
         coordinates = node_id_to_coordinates[node["id_"]]
         old_position = layout_element_builder.position
         new_position = momapy.geometry.Point.from_tuple(coordinates)
@@ -399,9 +394,7 @@ def make_map_layout_from_ig(
     for relationship in ig.get_relationships():
         start_node = relationship.start_node
         end_node = relationship.end_node
-        start_layout_element = node_id_to_layout_element_moved[
-            start_node["id_"]
-        ]
+        start_layout_element = node_id_to_layout_element_moved[start_node["id_"]]
         end_layout_element = node_id_to_layout_element_moved[end_node["id_"]]
         start_point = start_layout_element.border(end_layout_element.center())
         end_point = end_layout_element.border(start_layout_element.center())
@@ -415,9 +408,7 @@ def make_map_layout_from_ig(
     for node_ids, color_name in color_node_ids:
         color = getattr(momapy.coloring, color_name)
         for node_id in node_ids:
-            layout_element_builder = node_id_to_layout_element_moved.get(
-                node_id
-            )
+            layout_element_builder = node_id_to_layout_element_moved.get(node_id)
             if layout_element_builder is not None:
                 layout_element_builder.fill = color
     for layout_element_builder in node_id_to_layout_element_moved.values():
@@ -436,9 +427,7 @@ def make_map_layout_from_ig(
             text=label, position=momapy.positioning.below_of(bbox.south(), 50)
         )
         layout_builder.layout_elements.append(text_layout)
-        bbox = momapy.positioning.fit(
-            layout_builder.layout_elements, xsep=50, ysep=50
-        )
+        bbox = momapy.positioning.fit(layout_builder.layout_elements, xsep=50, ysep=50)
     layout_builder.position = bbox.position
     layout_builder.width = bbox.width
     layout_builder.height = bbox.height
