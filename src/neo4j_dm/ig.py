@@ -420,6 +420,16 @@ def make_map_layout_from_ig(
             )
             if layout_element_builder is not None:
                 layout_element_builder.fill = color
+    for layout_element_builder in node_id_to_layout_element_moved.values():
+        if layout_element_builder.label is not None:
+            layout_element_builder.label.font_size = 18.0
+            bbox = momapy.positioning.fit(
+                [layout_element_builder.label.ink_bbox()], xsep=5, ysep=5
+            )
+            if bbox.width > layout_element_builder.width:
+                layout_element_builder.width = bbox.width
+            if bbox.height > layout_element_builder.height:
+                layout_element_builder.height = bbox.height
     bbox = momapy.positioning.fit(layout_builder.layout_elements)
     if label is not None:
         text_layout = momapy.core.TextLayout(
